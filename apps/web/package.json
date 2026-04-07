@@ -1,0 +1,11 @@
+{
+  "name": "@kpi/web",
+  "version": "0.0.1",
+  "scripts": {
+    "dev": "echo 'web dev placeholder'",
+    "build": "echo 'web build placeholder'",
+    "lint": "echo 'web lint placeholder'",
+    "typecheck": "echo 'web typecheck placeholder'",
+    "test": "echo 'web test placeholder'"
+  }
+}

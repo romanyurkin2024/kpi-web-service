@@ -1,0 +1,11 @@
+{
+  "name": "@kpi/api",
+  "version": "0.0.1",
+  "scripts": {
+    "dev": "echo 'api dev placeholder'",
+    "build": "echo 'api build placeholder'",
+    "lint": "echo 'api lint placeholder'",
+    "typecheck": "echo 'api typecheck placeholder'",
+    "test": "echo 'api test placeholder'"
+  }
+}
