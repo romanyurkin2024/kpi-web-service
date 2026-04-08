@@ -18,7 +18,6 @@ ENV NODE_TLS_REJECT_UNAUTHORIZED=0
 ENV PRISMA_ENGINES_CHECKSUM_IGNORE_MISSING=1
 RUN cd apps/api && npx prisma generate
 RUN cd apps/api && npx nest build
-RUN find /app -name "libquery_engine*" -o -name "schema-engine*" 2>/dev/null | head -20
 
 FROM node:20 AS runner
 WORKDIR /app
@@ -33,5 +32,9 @@ RUN pnpm install --frozen-lockfile --prod --shamefully-hoist
 ENV NODE_TLS_REJECT_UNAUTHORIZED=1
 COPY --from=builder /app/apps/api/dist ./apps/api/dist
 COPY --from=builder /app/apps/api/prisma ./apps/api/prisma
+COPY --from=builder /app/node_modules/.pnpm/@prisma+client@5.22.0_prisma@5.22.0/node_modules/.prisma ./node_modules/.pnpm/@prisma+client@5.22.0_prisma@5.22.0/node_modules/.prisma
+COPY --from=builder /app/node_modules/.pnpm/@prisma+engines@5.22.0/node_modules/@prisma/engines/libquery_engine-debian-openssl-3.0.x.so.node ./node_modules/.pnpm/@prisma+engines@5.22.0/node_modules/@prisma/engines/libquery_engine-debian-openssl-3.0.x.so.node
+COPY --from=builder /app/node_modules/.pnpm/@prisma+engines@5.22.0/node_modules/@prisma/engines/schema-engine-debian-openssl-3.0.x ./node_modules/.pnpm/@prisma+engines@5.22.0/node_modules/@prisma/engines/schema-engine-debian-openssl-3.0.x
+COPY --from=builder /app/node_modules/.pnpm/prisma@5.22.0/node_modules/prisma/libquery_engine-debian-openssl-3.0.x.so.node ./node_modules/.pnpm/prisma@5.22.0/node_modules/prisma/libquery_engine-debian-openssl-3.0.x.so.node
 EXPOSE 3000
 CMD ["node", "apps/api/dist/main"]
