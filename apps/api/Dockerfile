@@ -36,5 +36,7 @@ COPY --from=builder /app/node_modules/.pnpm/@prisma+client@5.22.0_prisma@5.22.0/
 COPY --from=builder /app/node_modules/.pnpm/@prisma+engines@5.22.0/node_modules/@prisma/engines/libquery_engine-debian-openssl-3.0.x.so.node ./node_modules/.pnpm/@prisma+engines@5.22.0/node_modules/@prisma/engines/libquery_engine-debian-openssl-3.0.x.so.node
 COPY --from=builder /app/node_modules/.pnpm/@prisma+engines@5.22.0/node_modules/@prisma/engines/schema-engine-debian-openssl-3.0.x ./node_modules/.pnpm/@prisma+engines@5.22.0/node_modules/@prisma/engines/schema-engine-debian-openssl-3.0.x
 COPY --from=builder /app/node_modules/.pnpm/prisma@5.22.0/node_modules/prisma/libquery_engine-debian-openssl-3.0.x.so.node ./node_modules/.pnpm/prisma@5.22.0/node_modules/prisma/libquery_engine-debian-openssl-3.0.x.so.node
+COPY apps/api/entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
 EXPOSE 3000
-CMD ["node", "apps/api/dist/main"]
+ENTRYPOINT ["/entrypoint.sh"]
