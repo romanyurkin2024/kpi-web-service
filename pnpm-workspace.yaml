@@ -3,6 +3,11 @@ packages:
   - 'packages/*'
 allowBuilds:
   '@nestjs/core': false
+  '@prisma/client': true
   '@prisma/engines': false
+  '@scarf/scarf': true
+  bcrypt: true
+  oracledb: true
   prisma: false
+  sharp: true
   unrs-resolver: false

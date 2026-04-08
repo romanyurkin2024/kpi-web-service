@@ -12,9 +12,9 @@ RUN pnpm install --frozen-lockfile --shamefully-hoist
 FROM base AS builder
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
-COPY --from=deps /app/apps/api/node_modules ./apps/api/node_modules
 COPY . .
-RUN pnpm --filter @kpi/api build
+RUN cd apps/api && npx prisma generate
+RUN cd apps/api && npx nest build || (echo "BUILD FAILED" && exit 1)
 
 FROM node:20-alpine AS runner
 WORKDIR /app
@@ -27,6 +27,5 @@ COPY packages/config/package.json ./packages/config/
 RUN pnpm install --frozen-lockfile --prod --shamefully-hoist
 COPY --from=builder /app/apps/api/dist ./apps/api/dist
 COPY --from=builder /app/apps/api/prisma ./apps/api/prisma
-COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
 EXPOSE 3000
 CMD ["node", "apps/api/dist/main"]
