@@ -1,6 +1,5 @@
-FROM node:20-alpine AS base
+FROM node:20 AS base
 RUN npm install -g pnpm
-RUN apk add --no-cache openssl
 
 FROM base AS deps
 WORKDIR /app
@@ -18,10 +17,9 @@ ENV PRISMA_ENGINES_CHECKSUM_IGNORE_MISSING=1
 ENV NODE_TLS_REJECT_UNAUTHORIZED=0
 RUN cd apps/api && npx prisma generate
 ENV NODE_TLS_REJECT_UNAUTHORIZED=1
-RUN cd apps/api && npx nest build || (echo "BUILD FAILED" && exit 1)
+RUN cd apps/api && npx nest build
 
-FROM node:20-alpine AS runner
-RUN apk add --no-cache openssl
+FROM node:20 AS runner
 WORKDIR /app
 ENV NODE_ENV=production
 RUN npm install -g pnpm
@@ -32,6 +30,5 @@ COPY packages/config/package.json ./packages/config/
 RUN pnpm install --frozen-lockfile --prod --shamefully-hoist
 COPY --from=builder /app/apps/api/dist ./apps/api/dist
 COPY --from=builder /app/apps/api/prisma ./apps/api/prisma
-COPY --from=builder /app/node_modules/.pnpm ./node_modules/.pnpm
 EXPOSE 3000
 CMD ["node", "apps/api/dist/main"]
