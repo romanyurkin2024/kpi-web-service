@@ -13,10 +13,12 @@ FROM base AS builder
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
+RUN cd apps/api && npx prisma generate
 RUN pnpm --filter @kpi/api build
 
 FROM node:20-alpine AS runner
 WORKDIR /app
+ENV NODE_ENV=production
 RUN npm install -g pnpm
 COPY package.json pnpm-workspace.yaml pnpm-lock.yaml ./
 COPY apps/api/package.json ./apps/api/
@@ -25,6 +27,6 @@ COPY packages/config/package.json ./packages/config/
 RUN pnpm install --frozen-lockfile --prod
 COPY --from=builder /app/apps/api/dist ./apps/api/dist
 COPY --from=builder /app/apps/api/prisma ./apps/api/prisma
-COPY --from=builder /app/apps/api/generated ./apps/api/generated
+COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
 EXPOSE 3000
 CMD ["node", "apps/api/dist/main"]

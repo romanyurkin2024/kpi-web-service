@@ -24,34 +24,16 @@ services:
       dockerfile: apps/api/Dockerfile
     container_name: kpi_api
     restart: unless-stopped
+    env_file:
+      - .env
     environment:
-      NODE_ENV: production
-      PORT: 3000
       DATABASE_URL: postgresql://postgres:postgres@postgres:5432/kpi_db
-      JWT_ACCESS_SECRET: ${JWT_ACCESS_SECRET}
-      JWT_ACCESS_EXPIRES_IN: 15m
-      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET}
-      JWT_REFRESH_EXPIRES_IN: 7d
-      FRONTEND_URL: ${FRONTEND_URL:-http://localhost:3001}
-      EXT_PG_ENABLED: ${EXT_PG_ENABLED:-false}
-      EXT_PG_HOST: ${EXT_PG_HOST:-}
-      EXT_PG_PORT: ${EXT_PG_PORT:-5432}
-      EXT_PG_USER: ${EXT_PG_USER:-}
-      EXT_PG_PASSWORD: ${EXT_PG_PASSWORD:-}
-      EXT_PG_DATABASE: ${EXT_PG_DATABASE:-}
-      ORACLE_ENABLED: ${ORACLE_ENABLED:-false}
-      ORACLE_HOST: ${ORACLE_HOST:-}
-      ORACLE_PORT: ${ORACLE_PORT:-1521}
-      ORACLE_USER: ${ORACLE_USER:-}
-      ORACLE_PASSWORD: ${ORACLE_PASSWORD:-}
-      ORACLE_SERVICE_NAME: ${ORACLE_SERVICE_NAME:-}
-      ADMIN_EMAIL: ${ADMIN_EMAIL:-admin@kpi.local}
-      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-change_me_admin_password}
     ports:
       - "3000:3000"
     depends_on:
       postgres:
         condition: service_healthy
+    command: sh -c "cd apps/api && npx prisma migrate deploy && npx prisma db seed && node ../api/dist/main"
 
   web:
     build:
@@ -59,8 +41,8 @@ services:
       dockerfile: apps/web/Dockerfile
     container_name: kpi_web
     restart: unless-stopped
-    environment:
-      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:3000/api}
+    env_file:
+      - .env
     ports:
       - "3001:3001"
     depends_on:
