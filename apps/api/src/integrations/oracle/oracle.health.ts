@@ -1,6 +1,7 @@
 import { Injectable, Inject, Logger } from '@nestjs/common';
 import * as oracledb from 'oracledb';
 import { ORACLE_POOL } from './oracle.provider';
+import { IntegrationHealthResult } from '../integration.types';
 
 @Injectable()
 export class OracleHealthService {
@@ -10,7 +11,7 @@ export class OracleHealthService {
     @Inject(ORACLE_POOL) private readonly pool: oracledb.Pool | null,
   ) {}
 
-  async getStatus() {
+  async getStatus(): Promise<IntegrationHealthResult> {
     if (!this.pool) {
       return { name: 'oracle', status: 'disabled' };
     }

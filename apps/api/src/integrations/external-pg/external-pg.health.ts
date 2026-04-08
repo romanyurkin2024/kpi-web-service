@@ -1,6 +1,7 @@
 import { Injectable, Inject, Logger } from '@nestjs/common';
 import { Pool } from 'pg';
 import { EXTERNAL_PG_POOL } from './external-pg.provider';
+import { IntegrationHealthResult } from '../integration.types';
 
 @Injectable()
 export class ExternalPgHealthService {
@@ -10,7 +11,7 @@ export class ExternalPgHealthService {
     @Inject(EXTERNAL_PG_POOL) private readonly pool: Pool | null,
   ) {}
 
-  async getStatus() {
+  async getStatus(): Promise<IntegrationHealthResult> {
     if (!this.pool) {
       return { name: 'externalPg', status: 'disabled' };
     }

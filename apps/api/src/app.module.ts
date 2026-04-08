@@ -6,8 +6,7 @@ import { PrismaModule } from './prisma/prisma.module';
 import { AuthModule } from './auth/auth.module';
 import { UsersModule } from './users/users.module';
 import { AdminModule } from './admin/admin.module';
-import { ExternalPgModule } from './integrations/external-pg/external-pg.module';
-import { OracleModule } from './integrations/oracle/oracle.module';
+import { IntegrationsModule } from './integrations/integrations.module';
 import { externalPgConfigSchema } from './integrations/external-pg/external-pg.config';
 import { oracleConfigSchema } from './integrations/oracle/oracle.config';
 
@@ -35,8 +34,7 @@ import { oracleConfigSchema } from './integrations/oracle/oracle.config';
     AuthModule,
     UsersModule,
     AdminModule,
-    ExternalPgModule,
-    OracleModule,
+    IntegrationsModule,
   ],
 })
 export class AppModule {}
