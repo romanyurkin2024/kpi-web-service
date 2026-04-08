@@ -7,6 +7,7 @@ import {
 } from '@radix-ui/themes';
 import { useRouter } from 'next/navigation';
 import { api } from '@/lib/api';
+import { toast } from 'sonner';
 
 interface User {
   id: string;
@@ -65,8 +66,13 @@ export default function AdminUsersPage() {
   );
 
   async function toggleStatus(user: User) {
-    await api.patch(`/admin/users/${user.id}/status`, { isActive: !user.isActive });
-    fetchUsers(currentPage, roleFilter);
+    try {
+      await api.patch(`/admin/users/${user.id}/status`, { isActive: !user.isActive });
+      toast.success(user.isActive ? 'User deactivated' : 'User activated');
+      fetchUsers(currentPage, roleFilter);
+    } catch {
+      toast.error('Failed to update user status');
+    }
   }
 
   return (

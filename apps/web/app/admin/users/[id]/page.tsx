@@ -7,6 +7,7 @@ import {
   Badge, Button, Select,
 } from '@radix-ui/themes';
 import { api } from '@/lib/api';
+import { toast } from 'sonner';
 
 interface User {
   id: string;
@@ -46,7 +47,10 @@ export default function UserDetailPage() {
     setSaving(true);
     try {
       await api.patch(`/admin/users/${id}/role`, { role: selectedRole });
+      toast.success('Role updated successfully');
       await fetchUser();
+    } catch {
+      toast.error('Failed to update role');
     } finally {
       setSaving(false);
     }
@@ -57,7 +61,10 @@ export default function UserDetailPage() {
     setSaving(true);
     try {
       await api.patch(`/admin/users/${id}/status`, { isActive: !user.isActive });
+      toast.success(user.isActive ? 'User deactivated' : 'User activated');
       await fetchUser();
+    } catch {
+      toast.error('Failed to update status');
     } finally {
       setSaving(false);
     }

@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { Box, Flex, Text, Button, Avatar } from '@radix-ui/themes';
 import { getMe, logout, CurrentUser } from '@/lib/auth/auth';
+import { ThemeToggle } from '@/components/theme-toggle';
 
 const navItems = [
   { label: 'Dashboard', href: '/app/dashboard' },
@@ -41,8 +42,13 @@ export default function UserLayout({ children }: { children: React.ReactNode }) 
         }}
       >
         <Box px="4" mb="6">
-          <Text size="5" weight="bold">KPI Platform</Text>
-          <Text size="1" color="gray" as="p">User Panel</Text>
+          <Flex justify="between" align="center">
+            <Box>
+              <Text size="5" weight="bold">KPI Web Service</Text>
+              <Text size="1" color="gray" as="p">User Panel</Text>
+            </Box>
+            <ThemeToggle />
+          </Flex>
         </Box>
 
         <Flex direction="column" gap="1" px="2" style={{ flex: 1 }}>

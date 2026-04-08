@@ -21,8 +21,13 @@ export interface CurrentUser {
 
 export async function login(dto: LoginDto): Promise<AuthTokens> {
   const { data } = await api.post<AuthTokens>('/auth/login', dto);
+
   localStorage.setItem('accessToken', data.accessToken);
   localStorage.setItem('refreshToken', data.refreshToken);
+
+  document.cookie = `accessToken=${data.accessToken}; path=/; max-age=${15 * 60}; SameSite=Strict`;
+  document.cookie = `refreshToken=${data.refreshToken}; path=/; max-age=${7 * 24 * 60 * 60}; SameSite=Strict`;
+
   return data;
 }
 
@@ -31,8 +36,12 @@ export async function logout(): Promise<void> {
   if (refreshToken) {
     await api.post('/auth/logout', { refreshToken }).catch(() => {});
   }
+
   localStorage.removeItem('accessToken');
   localStorage.removeItem('refreshToken');
+
+  document.cookie = 'accessToken=; path=/; max-age=0';
+  document.cookie = 'refreshToken=; path=/; max-age=0';
 }
 
 export async function getMe(): Promise<CurrentUser> {

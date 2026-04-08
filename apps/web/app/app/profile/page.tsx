@@ -7,6 +7,7 @@ import {
 } from '@radix-ui/themes';
 import { getMe, CurrentUser } from '@/lib/auth/auth';
 import { api } from '@/lib/api';
+import { toast } from 'sonner';
 
 export default function UserProfile() {
   const [user, setUser] = useState<CurrentUser | null>(null);
@@ -30,6 +31,9 @@ export default function UserProfile() {
     try {
       await api.patch('/users/me', { firstName, lastName });
       setSuccess(true);
+      toast.success('Profile updated successfully');
+    } catch {
+      toast.error('Failed to update profile');
     } finally {
       setSaving(false);
     }

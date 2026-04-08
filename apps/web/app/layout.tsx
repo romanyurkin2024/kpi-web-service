@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { Theme } from '@radix-ui/themes';
 import { Providers } from '@/components/providers/query-provider';
+import { Toaster } from 'sonner';
 import '@radix-ui/themes/styles.css';
 import './globals.css';
 
@@ -17,10 +18,16 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body suppressHydrationWarning>
-        <Theme accentColor="blue" radius="medium" scaling="95%">
+        <Theme
+          accentColor="blue"
+          radius="medium"
+          scaling="95%"
+          appearance="inherit"
+        >
           <Providers>
             {children}
           </Providers>
+          <Toaster richColors position="top-right" />
         </Theme>
       </body>
     </html>

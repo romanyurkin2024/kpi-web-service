@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { Box, Flex, Text, Button, Avatar } from '@radix-ui/themes';
 import { getMe, logout, CurrentUser } from '@/lib/auth/auth';
+import { ThemeToggle } from '@/components/theme-toggle';
 
 const navItems = [
   { label: 'Dashboard', href: '/admin/dashboard' },
@@ -17,6 +18,10 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const [user, setUser] = useState<CurrentUser | null>(null);
 
   useEffect(() => {
+    const saved = localStorage.getItem('theme');
+    if (saved === 'dark') {
+      document.documentElement.classList.add('dark');
+    }
     getMe()
       .then((u) => {
         if (!u.roles.includes('ADMIN')) {
@@ -37,7 +42,6 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
   return (
     <Flex style={{ minHeight: '100vh' }}>
-      {/* Sidebar */}
       <Box
         style={{
           width: 240,
@@ -49,8 +53,13 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         }}
       >
         <Box px="4" mb="6">
-          <Text size="5" weight="bold">KPI Platform</Text>
-          <Text size="1" color="gray" as="p">Admin Panel</Text>
+          <Flex justify="between" align="center">
+            <Box>
+              <Text size="5" weight="bold">KPI Platform</Text>
+              <Text size="1" color="gray" as="p">Admin Panel</Text>
+            </Box>
+            <ThemeToggle />
+          </Flex>
         </Box>
 
         <Flex direction="column" gap="1" px="2" style={{ flex: 1 }}>
@@ -63,6 +72,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                 borderRadius: 6,
                 cursor: 'pointer',
                 background: pathname === item.href ? 'var(--accent-3)' : 'transparent',
+                transition: 'background 0.15s',
               }}
               onClick={() => router.push(item.href)}
             >
@@ -89,13 +99,18 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
               <Text size="1" color="gray">Admin</Text>
             </Box>
           </Flex>
-          <Button variant="soft" color="gray" size="1" onClick={handleLogout} style={{ width: '100%' }}>
+          <Button
+            variant="soft"
+            color="gray"
+            size="1"
+            onClick={handleLogout}
+            style={{ width: '100%' }}
+          >
             Sign out
           </Button>
         </Box>
       </Box>
 
-      {/* Main content */}
       <Box style={{ flex: 1, padding: 32, overflow: 'auto' }}>
         {children}
       </Box>
