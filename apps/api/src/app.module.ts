@@ -7,7 +7,9 @@ import { AuthModule } from './auth/auth.module';
 import { UsersModule } from './users/users.module';
 import { AdminModule } from './admin/admin.module';
 import { ExternalPgModule } from './integrations/external-pg/external-pg.module';
+import { OracleModule } from './integrations/oracle/oracle.module';
 import { externalPgConfigSchema } from './integrations/external-pg/external-pg.config';
+import { oracleConfigSchema } from './integrations/oracle/oracle.config';
 
 @Module({
   imports: [
@@ -24,7 +26,9 @@ import { externalPgConfigSchema } from './integrations/external-pg/external-pg.c
         JWT_ACCESS_EXPIRES_IN: Joi.string().default('15m'),
         JWT_REFRESH_SECRET: Joi.string().required(),
         JWT_REFRESH_EXPIRES_IN: Joi.string().default('7d'),
-      }).concat(externalPgConfigSchema),
+      })
+        .concat(externalPgConfigSchema)
+        .concat(oracleConfigSchema),
     }),
     PrismaModule,
     HealthModule,
@@ -32,6 +36,7 @@ import { externalPgConfigSchema } from './integrations/external-pg/external-pg.c
     UsersModule,
     AdminModule,
     ExternalPgModule,
+    OracleModule,
   ],
 })
 export class AppModule {}
