@@ -6,6 +6,8 @@ import { PrismaModule } from './prisma/prisma.module';
 import { AuthModule } from './auth/auth.module';
 import { UsersModule } from './users/users.module';
 import { AdminModule } from './admin/admin.module';
+import { ExternalPgModule } from './integrations/external-pg/external-pg.module';
+import { externalPgConfigSchema } from './integrations/external-pg/external-pg.config';
 
 @Module({
   imports: [
@@ -22,13 +24,14 @@ import { AdminModule } from './admin/admin.module';
         JWT_ACCESS_EXPIRES_IN: Joi.string().default('15m'),
         JWT_REFRESH_SECRET: Joi.string().required(),
         JWT_REFRESH_EXPIRES_IN: Joi.string().default('7d'),
-      }),
+      }).concat(externalPgConfigSchema),
     }),
     PrismaModule,
     HealthModule,
     AuthModule,
     UsersModule,
     AdminModule,
+    ExternalPgModule,
   ],
 })
 export class AppModule {}
