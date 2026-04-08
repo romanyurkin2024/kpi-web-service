@@ -5,6 +5,7 @@ import {
   Heading, Text, Table, Badge, Button,
   Flex, Box, TextField, Select,
 } from '@radix-ui/themes';
+import { useRouter } from 'next/navigation';
 import { api } from '@/lib/api';
 
 interface User {
@@ -34,6 +35,7 @@ export default function AdminUsersPage() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [roleFilter, setRoleFilter] = useState('all');
+  const router = useRouter();
   const [currentPage, setCurrentPage] = useState(1);
 
   const fetchUsers = useCallback(async (page: number, role: string) => {
@@ -152,14 +154,23 @@ export default function AdminUsersPage() {
                 </Text>
               </Table.Cell>
               <Table.Cell>
-                <Button
-                  size="1"
-                  variant="soft"
-                  color={user.isActive ? 'red' : 'green'}
-                  onClick={() => toggleStatus(user)}
-                >
-                  {user.isActive ? 'Deactivate' : 'Activate'}
-                </Button>
+                <Flex gap="2">
+                  <Button
+                    size="1"
+                    variant="outline"
+                    onClick={() => router.push(`/admin/users/${user.id}`)}
+                  >
+                    View
+                  </Button>
+                  <Button
+                    size="1"
+                    variant="soft"
+                    color={user.isActive ? 'red' : 'green'}
+                    onClick={() => toggleStatus(user)}
+                  >
+                    {user.isActive ? 'Deactivate' : 'Activate'}
+                  </Button>
+                </Flex>
               </Table.Cell>
             </Table.Row>
           ))}
@@ -190,3 +201,4 @@ export default function AdminUsersPage() {
     </Flex>
   );
 }
+// already handled via router in the table
