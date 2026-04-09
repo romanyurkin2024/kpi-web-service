@@ -11,6 +11,7 @@ import { AdminModule } from './admin/admin.module';
 import { IntegrationsModule } from './integrations/integrations.module';
 import { externalPgConfigSchema } from './integrations/external-pg/external-pg.config';
 import { oracleConfigSchema } from './integrations/oracle/oracle.config';
+import { ScriptsModule } from './scripts/scripts.module';
 
 @Module({
   imports: [
@@ -50,6 +51,7 @@ import { oracleConfigSchema } from './integrations/oracle/oracle.config';
     UsersModule,
     AdminModule,
     IntegrationsModule,
+    ScriptsModule,
   ],
   providers: [
     {
