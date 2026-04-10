@@ -104,4 +104,33 @@ export class ScriptsService {
     );
     return result.rows;
   }
+
+  async update(id: number, dto: Partial<CreateScriptDto>): Promise<ScriptRow> {
+    const pool = this.getPool();
+    const result: QueryResult<ScriptRow> = await pool.query(
+      `UPDATE motiv."BI_SCRIPTS_CHRON"
+     SET 
+       name_of_table = COALESCE($1, name_of_table),
+       name_of_product = COALESCE($2, name_of_product),
+       name_def = COALESCE($3, name_def),
+       script = COALESCE($4, script),
+       connector_use = COALESCE($5, connector_use),
+       comment = COALESCE($6, comment),
+       editor = COALESCE($7, editor),
+       rpt_base_ymd = NOW()
+     WHERE id = $8
+     RETURNING *`,
+      [
+        dto.name_of_table,
+        dto.name_of_product,
+        dto.name_def,
+        dto.script,
+        dto.connector_use,
+        dto.comment,
+        dto.editor,
+        id,
+      ],
+    );
+    return result.rows[0];
+  }
 }

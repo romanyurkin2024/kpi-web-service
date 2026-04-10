@@ -2,6 +2,7 @@ import {
   Controller,
   Get,
   Post,
+  Patch,
   Body,
   Param,
   Query,
@@ -42,5 +43,13 @@ export class ScriptsController {
   @Post()
   create(@Body() dto: CreateScriptDto) {
     return this.scriptsService.create(dto);
+  }
+
+  @Patch(':id')
+  update(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: Partial<CreateScriptDto>,
+  ) {
+    return this.scriptsService.update(id, dto);
   }
 }

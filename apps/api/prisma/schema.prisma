@@ -35,9 +35,9 @@ model User {
   updatedAt    DateTime  @updatedAt
   lastLoginAt  DateTime?
 
-  userRoles  UserRole[]
-  sessions   Session[]
-  auditLogs  AuditLog[]
+  userRoles UserRole[]
+  sessions  Session[]
+  auditLogs AuditLog[]
 
   @@map("users")
 }
