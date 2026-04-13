@@ -18,6 +18,12 @@ import { RolesGuard } from '../common/guards/roles.guard';
 import { Roles } from '../common/decorators/roles.decorator';
 import { RunScriptDto } from './dto/run-scripts.dto';
 import { AddToDirectoryDto } from './dto/add-to-directory.dto';
+import { CurrentUser } from '../common/decorators/current-user.decorator';
+
+interface AuthUser {
+  id: string;
+  email: string;
+}
 
 @Controller('admin/scripts')
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -33,8 +39,14 @@ export class ScriptsController {
     return this.scriptsService.findAll(limit, offset);
   }
   @Post('directory')
-  addToDirectory(@Body() dto: AddToDirectoryDto) {
-    return this.scriptsService.addToDirectory(dto);
+  addToDirectory(
+    @Body() dto: AddToDirectoryDto,
+    @CurrentUser() user: AuthUser,
+  ) {
+    return this.scriptsService.addToDirectory({
+      ...dto,
+      userEmail: user?.email,
+    });
   }
 
   @Get('directory')
@@ -46,8 +58,13 @@ export class ScriptsController {
   removeFromDirectory(
     @Query('table') nameOfTable: string,
     @Query('func') nameOfDefQ: string,
+    @CurrentUser() user: AuthUser,
   ) {
-    return this.scriptsService.removeFromDirectory(nameOfTable, nameOfDefQ);
+    return this.scriptsService.removeFromDirectory(
+      nameOfTable,
+      nameOfDefQ,
+      user?.email,
+    );
   }
 
   @Get('search')
@@ -74,7 +91,11 @@ export class ScriptsController {
   }
 
   @Post('run')
-  runScript(@Body() dto: RunScriptDto) {
-    return this.scriptsService.runScript(dto);
+  runScript(@Body() dto: RunScriptDto, @CurrentUser() user: AuthUser) {
+    return this.scriptsService.runScript({
+      ...dto,
+      userId: user?.id,
+      userEmail: user?.email,
+    });
   }
 }

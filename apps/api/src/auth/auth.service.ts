@@ -11,6 +11,7 @@ import { LoginDto } from './dto/login.dto';
 import { JwtPayload } from './jwt.strategy';
 import * as bcrypt from 'bcrypt';
 import * as crypto from 'crypto';
+import { AuditService } from 'src/audit/audit.service';
 
 @Injectable()
 export class AuthService {
@@ -19,9 +20,14 @@ export class AuthService {
     private readonly usersService: UsersService,
     private readonly jwtService: JwtService,
     private readonly configService: ConfigService,
+    private readonly auditService: AuditService,
   ) {}
 
-  async login(dto: LoginDto, ipAddress?: string, userAgent?: string | string[]) {
+  async login(
+    dto: LoginDto,
+    ipAddress?: string,
+    userAgent?: string | string[],
+  ) {
     const user = await this.usersService.findByEmail(dto.email);
 
     if (!user) {
@@ -34,11 +40,19 @@ export class AuthService {
 
     const passwordValid = await bcrypt.compare(dto.password, user.passwordHash);
     if (!passwordValid) {
+      await this.auditService.log({
+        userEmail: dto.email,
+        actionType: 'login_failed',
+        entity: 'session',
+        status: 'error',
+        description: `Неудачная попытка входа для ${dto.email}`,
+        completedAt: new Date(),
+      });
       throw new UnauthorizedException('Invalid credentials');
     }
 
     const roles = user.userRoles.map((ur) => ur.role.name);
-    const tokens = await this.generateTokens(user.id, user.email, roles);
+    const tokens = this.generateTokens(user.id, user.email, roles);
 
     await this.prisma.session.create({
       data: {
@@ -53,6 +67,15 @@ export class AuthService {
     await this.prisma.user.update({
       where: { id: user.id },
       data: { lastLoginAt: new Date() },
+    });
+
+    await this.auditService.log({
+      userEmail: user.email,
+      actionType: 'login',
+      entity: 'session',
+      status: 'success',
+      description: `Пользователь ${user.email} вошёл в систему`,
+      completedAt: new Date(),
     });
 
     return tokens;
@@ -75,7 +98,7 @@ export class AuthService {
     }
 
     const roles = session.user.userRoles.map((ur) => ur.role.name);
-    const tokens = await this.generateTokens(
+    const tokens = this.generateTokens(
       session.user.id,
       session.user.email,
       roles,
@@ -106,16 +129,12 @@ export class AuthService {
     });
   }
 
-  private async generateTokens(userId: string, email: string, roles: string[]) {
+  private generateTokens(userId: string, email: string, roles: string[]) {
     const payload: JwtPayload = { sub: userId, email, roles };
-
-    const secret = this.configService.get<string>('JWT_ACCESS_SECRET');
-    const expiresIn = this.configService.get('JWT_ACCESS_EXPIRES_IN') ?? '15m';
-
     const accessToken = this.jwtService.sign(payload, {
-      secret,
-      expiresIn,
-    });
+      secret: this.configService.getOrThrow<string>('JWT_ACCESS_SECRET'),
+      expiresIn: this.configService.get('JWT_ACCESS_EXPIRES_IN') ?? '15m',
+    } as Parameters<typeof this.jwtService.sign>[1]);
 
     const refreshToken = crypto.randomBytes(64).toString('hex');
 

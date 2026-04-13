@@ -45,4 +45,12 @@ export class AddToDirectoryDto {
   @IsOptional()
   @IsString()
   flow?: string;
+
+  @IsOptional()
+  @IsString()
+  userId?: string;
+
+  @IsOptional()
+  @IsString()
+  userEmail?: string;
 }

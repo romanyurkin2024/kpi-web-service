@@ -1,4 +1,4 @@
-import { IsString, IsObject } from 'class-validator';
+import { IsString, IsObject, IsOptional } from 'class-validator';
 
 export class RunScriptDto {
   @IsString()
@@ -15,4 +15,12 @@ export class RunScriptDto {
 
   @IsObject()
   params: Record<string, string>;
+
+  @IsOptional()
+  @IsString()
+  userId?: string;
+
+  @IsOptional()
+  @IsString()
+  userEmail?: string;
 }

@@ -23,10 +23,17 @@ export const OracleProvider: Provider = {
     }
 
     try {
+      const host = config.get<string>('ORACLE_HOST');
+      const port = config.get<string>('ORACLE_PORT');
+      const sid = config.get<string>('ORACLE_SERVICE_NAME');
+
+      const connectString = `(DESCRIPTION=(ADDRESS=(PROTOCOL=TCP)(HOST=${host})(PORT=${port}))(CONNECT_DATA=(SID=${sid})))`;
+      logger.log(`Connecting to Oracle with SID: ${connectString}`);
+
       const pool = await oracledb.createPool({
         user: config.get('ORACLE_USER'),
         password: config.get('ORACLE_PASSWORD'),
-        connectString: `${config.get('ORACLE_HOST')}:${config.get('ORACLE_PORT')}/${config.get('ORACLE_SERVICE_NAME')}`,
+        connectString,
         poolMin: 1,
         poolMax: 10,
         poolIncrement: 1,

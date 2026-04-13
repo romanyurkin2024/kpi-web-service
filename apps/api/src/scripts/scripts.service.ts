@@ -6,6 +6,7 @@ import { CreateScriptDto } from './dto/create-script.dto';
 import { RunScriptDto } from './dto/run-scripts.dto';
 import * as oracledb from 'oracledb';
 import { AddToDirectoryDto } from './dto/add-to-directory.dto';
+import { AuditService } from 'src/audit/audit.service';
 
 export interface ScriptRow {
   id: number;
@@ -29,6 +30,7 @@ export class ScriptsService {
   constructor(
     @Inject(EXTERNAL_PG_POOL) private readonly pgPool: Pool | null,
     @Inject(ORACLE_POOL) private readonly oraclePool: oracledb.Pool | null,
+    private readonly auditService: AuditService,
   ) {}
 
   private getPgPool(): Pool {
@@ -97,6 +99,13 @@ export class ScriptsService {
         dto.fragment ?? null,
       ],
     );
+    await this.auditService.log({
+      actionType: 'script_add',
+      entity: 'BI_SCRIPTS_CHRON',
+      entityId: dto.name_of_table,
+      description: `Добавлен скрипт для ${dto.name_def}`,
+      completedAt: new Date(),
+    });
     return result.rows[0];
   }
 
@@ -288,6 +297,22 @@ export class ScriptsService {
       inserted += batch.length;
     }
 
+    await this.auditService.log({
+      userEmail: dto.userEmail,
+      actionType: 'script_run',
+      entity: dto.targetTable,
+      entityId: dto.nameOfFunc,
+      connector: dto.connector,
+      status: 'success',
+      rowsDeleted: deletedRows,
+      rowsInserted: inserted,
+      params: dto.params,
+      description: tableExists
+        ? `Удалено ${deletedRows} строк, залито ${inserted} строк в ${targetTable}`
+        : `Создана таблица ${targetTable} и залито ${inserted} строк`,
+      completedAt: new Date(),
+    });
+
     return {
       rowsAffected: inserted,
       message: tableExists
@@ -318,10 +343,22 @@ export class ScriptsService {
         dto.flow ?? null,
       ],
     );
+
+    await this.auditService.log({
+      userEmail: dto.userEmail,
+      actionType: 'directory_add',
+      entity: 'ball_system_scripts_dct',
+      entityId: dto.name_of_table,
+      description: `Добавлена функция ${dto.name_of_def_q} в справочник`,
+      completedAt: new Date(),
+    });
   }
 
   async update(id: number, dto: Partial<CreateScriptDto>): Promise<ScriptRow> {
     const pool = this.getPgPool();
+
+    // Получаем старый скрипт для лога
+    const existing = await this.findOne(id);
     const result: QueryResult<ScriptRow> = await pool.query(
       `UPDATE motiv."BI_SCRIPTS_CHRON"
      SET 
@@ -346,12 +383,23 @@ export class ScriptsService {
         id,
       ],
     );
+    await this.auditService.log({
+      actionType: 'script_edit',
+      entity: 'BI_SCRIPTS_CHRON',
+      entityId: String(id),
+      oldValue: existing?.script ?? undefined,
+      newValue: dto.script ?? undefined,
+      description: `Отредактирован скрипт #${id} (${existing?.name_def ?? ''}) редактором ${dto.editor ?? ''}`,
+      completedAt: new Date(),
+    });
+
     return result.rows[0];
   }
 
   async removeFromDirectory(
     nameOfTable: string,
     nameOfDefQ: string,
+    userEmail?: string,
   ): Promise<void> {
     const pool = this.getPgPool();
     await pool.query(
@@ -359,5 +407,13 @@ export class ScriptsService {
        WHERE name_of_table = $1 AND name_of_def_q = $2`,
       [nameOfTable, nameOfDefQ],
     );
+    await this.auditService.log({
+      userEmail,
+      actionType: 'directory_delete',
+      entity: 'ball_system_scripts_dct',
+      entityId: nameOfTable,
+      description: `Удалена функция ${nameOfDefQ} из справочника`,
+      completedAt: new Date(),
+    });
   }
 }

@@ -6,10 +6,14 @@ import {
 import { PrismaService } from '../prisma/prisma.service';
 import { UpdateRoleDto } from './dto/update-role.dto';
 import { UpdateStatusDto } from './dto/update-status.dto';
+import { AuditService } from 'src/audit/audit.service';
 
 @Injectable()
 export class AdminService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly auditService: AuditService,
+  ) {}
 
   async getUsers(page = 1, limit = 20, role?: string, isActive?: boolean) {
     const skip = (page - 1) * limit;
@@ -98,6 +102,15 @@ export class AdminService {
       data: { userId: id, roleId: role.id },
     });
 
+    await this.auditService.log({
+      actionType: 'user_role_change',
+      entity: 'user',
+      entityId: id,
+      newValue: dto.role,
+      description: `Изменена роль пользователя ${id} на ${dto.role}`,
+      completedAt: new Date(),
+    });
+
     return this.getUserById(id);
   }
 
@@ -116,6 +129,15 @@ export class AdminService {
         data: { revokedAt: new Date() },
       });
     }
+
+    await this.auditService.log({
+      actionType: 'user_status_change',
+      entity: 'user',
+      entityId: id,
+      newValue: dto.isActive ? 'active' : 'inactive',
+      description: `Пользователь ${id} ${dto.isActive ? 'активирован' : 'деактивирован'}`,
+      completedAt: new Date(),
+    });
 
     return this.getUserById(id);
   }
