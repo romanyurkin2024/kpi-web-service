@@ -60,6 +60,7 @@ export default function DirectoryPage() {
   const [page, setPage] = useState(0);
   const [selected, setSelected] = useState<DirectoryItem | null>(null);
   const [periodFilter, setPeriodFilter] = useState('all');
+  const [showAdd, setShowAdd] = useState(false);
 
   useEffect(() => {
     api.get<DirectoryItem[]>('/admin/scripts/directory')
@@ -121,13 +122,15 @@ export default function DirectoryPage() {
 
   return (
     <Flex direction="column" gap="5">
-      <Box>
-        <Heading size="7">Справочник скриптов</Heading>
-        <Text color="gray" size="2">
-          {filtered.length} из {items.length} записей · motiv.ball_system_scripts_dct
-        </Text>
-      </Box>
-
+      <Flex justify="between" align="center">
+          <Box>
+            <Heading size="7">Справочник скриптов</Heading>
+            <Text color="gray" size="2">
+              {filtered.length} из {items.length} записей · motiv.ball_system_scripts_dct
+            </Text>
+          </Box>
+          <Button onClick={() => setShowAdd(true)}>+ Добавить в справочник</Button>
+      </Flex>
       <Flex gap="3">
         <TextField.Root
           placeholder="Поиск по таблице, функции, группе, продукту..."
@@ -193,7 +196,7 @@ export default function DirectoryPage() {
                 <Text size="2" color="gray">{item.gruppa ?? '—'}</Text>
               </Table.Cell>
               <Table.Cell>
-                <Text size="2" color="gray">{item.prod ?? '—'}</Text>
+                <Text size="2" color="gray">{item.name_of_product ?? '—'}</Text>
               </Table.Cell>
               <Table.Cell>
                 <Text size="1" color="gray" style={{
@@ -299,6 +302,23 @@ export default function DirectoryPage() {
           onClose={() => setSelected(null)}
         />
       )}
+  
+      {showAdd && (
+        <AddToDirectoryDialog
+          open={showAdd}
+          onClose={() => setShowAdd(false)}
+          onSuccess={() => {
+            setShowAdd(false);
+            toast.success('Добавлено в справочник');
+            // Перезагружаем данные
+            setLoading(true);
+            api.get<DirectoryItem[]>('/admin/scripts/directory')
+              .then(({ data }) => setItems(data))
+              .finally(() => setLoading(false));
+          }}
+        />
+      )}
+
     </Flex>
   );
 }
@@ -334,6 +354,7 @@ function RunScriptDialog({
         script: item.script,
         targetTable: item.name_of_table,
         connector: item.connector,
+        nameOfFunc: item.name_of_def_q,
         params,
       });
       setResult(data);
@@ -483,6 +504,179 @@ function RunScriptDialog({
           </Button>
           <Button onClick={handleRun} loading={running}>
             Запустить
+          </Button>
+        </Flex>
+      </Dialog.Content>
+    </Dialog.Root>
+  );
+}
+
+function AddToDirectoryDialog({
+  open,
+  onClose,
+  onSuccess,
+}: {
+  open: boolean;
+  onClose: () => void;
+  onSuccess: () => void;
+}) {
+  const [form, setForm] = useState({
+    name_of_table: '',
+    name_of_def_q: '',
+    name_of_product: '',
+    connector: 'POSTGRE-DASHDB',
+    biznes: '',
+    gruppa: '',
+    prod: '',
+    prod_type: '',
+    type_func: '',
+    base_ym: '',
+    rules: '',
+    flow: '',
+  });
+  const [saving, setSaving] = useState(false);
+
+  async function handleSubmit() {
+    if (!form.name_of_table || !form.name_of_def_q || !form.connector) {
+      toast.error('Заполните обязательные поля: Таблица, Функция, Коннектор');
+      return;
+    }
+    setSaving(true);
+    try {
+      await api.post('/admin/scripts/directory', form);
+      onSuccess();
+      setForm({
+        name_of_table: '', name_of_def_q: '', name_of_product: '',
+        connector: 'POSTGRE-DASHDB', biznes: '', gruppa: '', prod: '',
+        prod_type: '', type_func: '', base_ym: '', rules: '', flow: '',
+      });
+    } catch {
+      toast.error('Ошибка при добавлении');
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <Dialog.Root open={open} onOpenChange={onClose}>
+      <Dialog.Content aria-describedby={undefined} style={{ maxWidth: 600 }}>
+        <Dialog.Title>Добавить в справочник</Dialog.Title>
+        <Flex direction="column" gap="3">
+          <Flex gap="3">
+            <Box style={{ flex: 1 }}>
+              <Text size="2" weight="medium" as="p" mb="1">Таблица *</Text>
+              <TextField.Root
+                value={form.name_of_table}
+                onChange={(e) => setForm({ ...form, name_of_table: e.target.value })}
+                placeholder="name_of_table"
+              />
+            </Box>
+            <Box style={{ flex: 1 }}>
+              <Text size="2" weight="medium" as="p" mb="1">Функция *</Text>
+              <TextField.Root
+                value={form.name_of_def_q}
+                onChange={(e) => setForm({ ...form, name_of_def_q: e.target.value })}
+                placeholder="name_of_def_q"
+              />
+            </Box>
+          </Flex>
+
+          <Flex gap="3">
+            <Box style={{ flex: 1 }}>
+              <Text size="2" weight="medium" as="p" mb="1">Продукт</Text>
+              <TextField.Root
+                value={form.name_of_product}
+                onChange={(e) => setForm({ ...form, name_of_product: e.target.value })}
+                placeholder="name_of_product"
+              />
+            </Box>
+            <Box style={{ flex: 1 }}>
+              <Text size="2" weight="medium" as="p" mb="1">Коннектор *</Text>
+              <Select.Root
+                value={form.connector}
+                onValueChange={(v) => setForm({ ...form, connector: v })}
+              >
+                <Select.Trigger />
+                <Select.Content>
+                  <Select.Item value="POSTGRE-DASHDB">POSTGRE-DASHDB</Select.Item>
+                  <Select.Item value="ORACLE">ORACLE</Select.Item>
+                </Select.Content>
+              </Select.Root>
+            </Box>
+          </Flex>
+
+          <Flex gap="3">
+            <Box style={{ flex: 1 }}>
+              <Text size="2" weight="medium" as="p" mb="1">Бизнес</Text>
+              <TextField.Root
+                value={form.biznes}
+                onChange={(e) => setForm({ ...form, biznes: e.target.value })}
+                placeholder="biznes"
+              />
+            </Box>
+            <Box style={{ flex: 1 }}>
+              <Text size="2" weight="medium" as="p" mb="1">Группа</Text>
+              <TextField.Root
+                value={form.gruppa}
+                onChange={(e) => setForm({ ...form, gruppa: e.target.value })}
+                placeholder="gruppa"
+              />
+            </Box>
+          </Flex>
+
+          <Flex gap="3">
+            <Box style={{ flex: 1 }}>
+              <Text size="2" weight="medium" as="p" mb="1">Продукт (prod)</Text>
+              <TextField.Root
+                value={form.prod}
+                onChange={(e) => setForm({ ...form, prod: e.target.value })}
+                placeholder="prod"
+              />
+            </Box>
+            <Box style={{ flex: 1 }}>
+              <Text size="2" weight="medium" as="p" mb="1">Тип продукта</Text>
+              <TextField.Root
+                value={form.prod_type}
+                onChange={(e) => setForm({ ...form, prod_type: e.target.value })}
+                placeholder="prod_type"
+              />
+            </Box>
+          </Flex>
+
+          <Flex gap="3">
+            <Box style={{ flex: 1 }}>
+              <Text size="2" weight="medium" as="p" mb="1">Период (base_ym)</Text>
+              <TextField.Root
+                value={form.base_ym}
+                onChange={(e) => setForm({ ...form, base_ym: e.target.value })}
+                placeholder="202604"
+              />
+            </Box>
+            <Box style={{ flex: 1 }}>
+              <Text size="2" weight="medium" as="p" mb="1">Онлайн-обновление:</Text>
+              <TextField.Root
+                value={form.rules}
+                onChange={(e) => setForm({ ...form, rules: e.target.value })}
+                placeholder="1"
+              />
+            </Box>
+            <Box style={{ flex: 1 }}>
+              <Text size="2" weight="medium" as="p" mb="1">Flow</Text>
+              <TextField.Root
+                value={form.flow}
+                onChange={(e) => setForm({ ...form, flow: e.target.value })}
+                placeholder="flow"
+              />
+            </Box>
+          </Flex>
+        </Flex>
+
+        <Flex gap="2" mt="4" justify="end">
+          <Dialog.Close>
+            <Button variant="soft" color="gray">Отмена</Button>
+          </Dialog.Close>
+          <Button onClick={handleSubmit} loading={saving}>
+            Сохранить
           </Button>
         </Flex>
       </Dialog.Content>

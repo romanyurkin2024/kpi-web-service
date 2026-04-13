@@ -10,6 +10,9 @@ export class RunScriptDto {
   @IsString()
   connector: string;
 
+  @IsString()
+  nameOfFunc: string;
+
   @IsObject()
   params: Record<string, string>;
 }

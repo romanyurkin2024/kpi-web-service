@@ -17,6 +17,7 @@ import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../common/guards/roles.guard';
 import { Roles } from '../common/decorators/roles.decorator';
 import { RunScriptDto } from './dto/run-scripts.dto';
+import { AddToDirectoryDto } from './dto/add-to-directory.dto';
 
 @Controller('admin/scripts')
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -30,6 +31,10 @@ export class ScriptsController {
     @Query('offset', new DefaultValuePipe(0), ParseIntPipe) offset: number,
   ) {
     return this.scriptsService.findAll(limit, offset);
+  }
+  @Post('directory')
+  addToDirectory(@Body() dto: AddToDirectoryDto) {
+    return this.scriptsService.addToDirectory(dto);
   }
 
   @Get('directory')

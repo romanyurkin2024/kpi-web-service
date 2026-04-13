@@ -5,6 +5,7 @@ import { ORACLE_POOL } from 'src/integrations/oracle/oracle.provider';
 import { CreateScriptDto } from './dto/create-script.dto';
 import { RunScriptDto } from './dto/run-scripts.dto';
 import * as oracledb from 'oracledb';
+import { AddToDirectoryDto } from './dto/add-to-directory.dto';
 
 export interface ScriptRow {
   id: number;
@@ -210,6 +211,14 @@ export class ScriptsService {
     const pgPool = this.getPgPool();
     const targetTable = `motiv.${dto.targetTable}`;
 
+    // Определяем дату для DELETE
+    const dateValue =
+      dto.params['DATE_VALUE1'] ||
+      dto.params['DATE_VALUE3'] ||
+      Object.values(dto.params)[0] ||
+      '';
+
+    // Проверяем существует ли витрина
     const existsResult = await pgPool.query<{ exists: boolean }>(
       `SELECT EXISTS (
       SELECT FROM information_schema.tables
@@ -220,6 +229,7 @@ export class ScriptsService {
     );
 
     const tableExists = existsResult.rows[0].exists;
+    let deletedRows = 0;
 
     if (!tableExists) {
       const columnDefs = columns
@@ -235,6 +245,17 @@ export class ScriptsService {
         .join(', ');
 
       await pgPool.query(`CREATE TABLE ${targetTable} (${columnDefs})`);
+    } else {
+      if (dateValue) {
+        const deleteResult = await pgPool.query(
+          `DELETE FROM ${targetTable}
+          WHERE base_ymd <= $1
+            AND SUBSTR(base_ymd, 1, 6) = SUBSTR($1, 1, 6)
+            AND name_of_func = $2`,
+          [dateValue, dto.nameOfFunc],
+        );
+        deletedRows = deleteResult.rowCount ?? 0;
+      }
     }
 
     const BATCH = 1000;
@@ -270,10 +291,33 @@ export class ScriptsService {
     return {
       rowsAffected: inserted,
       message: tableExists
-        ? `Залито ${inserted} строк в ${targetTable}`
+        ? `Удалено ${deletedRows} строк, залито ${inserted} строк в ${targetTable}`
         : `Создана таблица ${targetTable} и залито ${inserted} строк`,
       preview: rows.slice(0, 5),
     };
+  }
+
+  async addToDirectory(dto: AddToDirectoryDto): Promise<void> {
+    const pool = this.getPgPool();
+    await pool.query(
+      `INSERT INTO motiv.ball_system_scripts_dct 
+      (biznes, gruppa, prod, prod_type, connector, name_of_table, name_of_def_q, name_of_product, type_func, base_ym, rules, flow)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)`,
+      [
+        dto.biznes ?? null,
+        dto.gruppa ?? null,
+        dto.prod ?? null,
+        dto.prod_type ?? null,
+        dto.connector,
+        dto.name_of_table,
+        dto.name_of_def_q,
+        dto.name_of_product ?? null,
+        dto.type_func ?? null,
+        dto.base_ym ?? null,
+        dto.rules ?? null,
+        dto.flow ?? null,
+      ],
+    );
   }
 
   async update(id: number, dto: Partial<CreateScriptDto>): Promise<ScriptRow> {
