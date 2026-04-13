@@ -9,9 +9,9 @@ export const OracleProvider: Provider = {
   inject: [ConfigService],
   useFactory: async (config: ConfigService) => {
     const logger = new Logger('OracleProvider');
-    const enabled = config.get('ORACLE_ENABLED');
+    const enabled = config.get<boolean>('ORACLE_ENABLED');
 
-    if (!enabled || enabled === 'false') {
+    if (!enabled) {
       logger.log('Oracle integration is disabled');
       return null;
     }

@@ -7,10 +7,11 @@ import { getMe, logout, CurrentUser } from '@/lib/auth/auth';
 import { ThemeToggle } from '@/components/theme-toggle';
 
 const navItems = [
-  { label: 'Dashboard', href: '/admin/dashboard' },
-  { label: 'Users', href: '/admin/users' },
-  { label: 'Integrations', href: '/admin/integrations' },
+  { label: 'Дашборд', href: '/admin/dashboard' },
+  { label: 'Пользователи', href: '/admin/users' },
+  { label: 'Коннекторы', href: '/admin/integrations' },
   { label: 'История скриптов', href: '/admin/scripts' },
+  { label: 'Справочник скриптов', href: '/admin/directory' },
 ];
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {

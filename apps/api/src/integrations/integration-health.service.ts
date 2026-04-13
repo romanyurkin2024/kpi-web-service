@@ -34,7 +34,11 @@ export class IntegrationHealthService {
       await this.prisma.$queryRaw`SELECT 1`;
       return { name: 'primary', status: 'ok' as const };
     } catch {
-      return { name: 'primary', status: 'error' as const, message: 'Connection failed' };
+      return {
+        name: 'primary',
+        status: 'error' as const,
+        message: 'Connection failed',
+      };
     }
   }
 }

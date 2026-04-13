@@ -172,7 +172,7 @@ export default function ScriptsPage() {
                     background: 'var(--accent-2)',
                   }}
                 >
-                  {(script.script ?? '').trim().slice(0, 60)}...                
+                  {(script.script ?? '').trim().slice(0, 30)}...                
                   </Box>
               </Table.Cell>
               <Table.Cell>

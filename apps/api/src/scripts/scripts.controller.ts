@@ -9,12 +9,14 @@ import {
   UseGuards,
   ParseIntPipe,
   DefaultValuePipe,
+  Delete,
 } from '@nestjs/common';
 import { ScriptsService } from './scripts.service';
 import { CreateScriptDto } from './dto/create-script.dto';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../common/guards/roles.guard';
 import { Roles } from '../common/decorators/roles.decorator';
+import { RunScriptDto } from './dto/run-scripts.dto';
 
 @Controller('admin/scripts')
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -28,6 +30,19 @@ export class ScriptsController {
     @Query('offset', new DefaultValuePipe(0), ParseIntPipe) offset: number,
   ) {
     return this.scriptsService.findAll(limit, offset);
+  }
+
+  @Get('directory')
+  getDirectory() {
+    return this.scriptsService.getDirectory();
+  }
+
+  @Delete('directory')
+  removeFromDirectory(
+    @Query('table') nameOfTable: string,
+    @Query('func') nameOfDefQ: string,
+  ) {
+    return this.scriptsService.removeFromDirectory(nameOfTable, nameOfDefQ);
   }
 
   @Get('search')
@@ -51,5 +66,10 @@ export class ScriptsController {
     @Body() dto: Partial<CreateScriptDto>,
   ) {
     return this.scriptsService.update(id, dto);
+  }
+
+  @Post('run')
+  runScript(@Body() dto: RunScriptDto) {
+    return this.scriptsService.runScript(dto);
   }
 }
