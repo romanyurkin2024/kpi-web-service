@@ -12,6 +12,8 @@ const navItems = [
   { label: 'Коннекторы', href: '/admin/integrations' },
   { label: 'История скриптов', href: '/admin/scripts' },
   { label: 'Справочник скриптов', href: '/admin/directory' },
+  { label: 'Журнал действий', href: '/admin/audit' },
+  { label: 'Запуск flow', href: '/admin/flow' },
 ];
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {

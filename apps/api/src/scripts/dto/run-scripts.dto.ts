@@ -23,4 +23,8 @@ export class RunScriptDto {
   @IsOptional()
   @IsString()
   userEmail?: string;
+
+  @IsOptional()
+  @IsString()
+  deleteScript?: string;
 }

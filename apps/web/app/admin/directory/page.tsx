@@ -6,6 +6,7 @@ import {
   Flex, Box, TextField, Dialog, Card,
   Spinner,
   Select,
+  TextArea,
 } from '@radix-ui/themes';
 import { api } from '@/lib/api';
 import { toast } from 'sonner';
@@ -533,6 +534,7 @@ function AddToDirectoryDialog({
     base_ym: '',
     rules: '',
     flow: '',
+    delete_script: '',
   });
   const [saving, setSaving] = useState(false);
 
@@ -548,7 +550,7 @@ function AddToDirectoryDialog({
       setForm({
         name_of_table: '', name_of_def_q: '', name_of_product: '',
         connector: 'POSTGRE-DASHDB', biznes: '', gruppa: '', prod: '',
-        prod_type: '', type_func: '', base_ym: '', rules: '', flow: '',
+        prod_type: '', type_func: '', base_ym: '', rules: '', flow: '', delete_script: '',
       });
     } catch {
       toast.error('Ошибка при добавлении');
@@ -660,6 +662,32 @@ function AddToDirectoryDialog({
                 placeholder="1"
               />
             </Box>
+          </Flex>
+          <Flex gap="3">
+            <Box>
+              <Text size="2" weight="medium" as="p" mb="1">Тип функции</Text>
+              <Select.Root
+                value={form.type_func || 'new'}
+                onValueChange={(v) => setForm({ ...form, type_func: v })}
+              >
+                <Select.Trigger />
+                <Select.Content>
+                  <Select.Item value="new">new</Select.Item>
+                  <Select.Item value="old">old</Select.Item>
+                </Select.Content>
+              </Select.Root>
+            </Box>
+              {form.type_func === 'old' && (
+                <Box>
+                  <Text size="2" weight="medium" as="p" mb="1">Скрипт удаления</Text>
+                  <TextArea
+                    value={form.delete_script}
+                    onChange={(e) => setForm({ ...form, delete_script: e.target.value })}
+                    placeholder="DELETE FROM motiv.TABLE WHERE ..."
+                    style={{ fontFamily: 'monospace', fontSize: 12, minHeight: 100 }}
+                  />
+                </Box>
+              )}
             <Box style={{ flex: 1 }}>
               <Text size="2" weight="medium" as="p" mb="1">Flow</Text>
               <TextField.Root

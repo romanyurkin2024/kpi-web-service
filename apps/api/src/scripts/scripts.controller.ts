@@ -10,6 +10,7 @@ import {
   ParseIntPipe,
   DefaultValuePipe,
   Delete,
+  NotFoundException,
 } from '@nestjs/common';
 import { ScriptsService } from './scripts.service';
 import { CreateScriptDto } from './dto/create-script.dto';
@@ -19,6 +20,9 @@ import { Roles } from '../common/decorators/roles.decorator';
 import { RunScriptDto } from './dto/run-scripts.dto';
 import { AddToDirectoryDto } from './dto/add-to-directory.dto';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
+import { FlowRunnerService } from './flow-runner.service';
+import { Sse, MessageEvent } from '@nestjs/common';
+import { Observable, map } from 'rxjs';
 
 interface AuthUser {
   id: string;
@@ -29,7 +33,10 @@ interface AuthUser {
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Roles('ADMIN')
 export class ScriptsController {
-  constructor(private readonly scriptsService: ScriptsService) {}
+  constructor(
+    private readonly scriptsService: ScriptsService,
+    private readonly flowRunnerService: FlowRunnerService,
+  ) {}
 
   @Get()
   findAll(
@@ -97,5 +104,38 @@ export class ScriptsController {
       userId: user?.id,
       userEmail: user?.email,
     });
+  }
+
+  @Post('flow/run')
+  startFlow(
+    @Body('baseYm') baseYm: string,
+    @Body('dateValue') dateValue: string,
+    @Body('flowName') flowName: string | undefined,
+    @Body('funcName') funcName: string | undefined,
+    @CurrentUser() user: AuthUser,
+  ) {
+    const { jobId, subject } = this.flowRunnerService.createJob();
+
+    // Запускаем в фоне не ожидая
+    void this.flowRunnerService
+      .runFlow(baseYm, dateValue, subject, user?.email, flowName, funcName)
+      .catch((err) => console.error('Flow error:', err));
+
+    return { jobId };
+  }
+
+  @Sse('flow/stream')
+  streamFlow(@Query('jobId') jobId: string): Observable<MessageEvent> {
+    const subject = this.flowRunnerService.getJob(jobId);
+
+    if (!subject) {
+      throw new NotFoundException(`Job ${jobId} not found`);
+    }
+
+    return subject.pipe(
+      map((event) => ({
+        data: JSON.stringify(event),
+      })),
+    );
   }
 }

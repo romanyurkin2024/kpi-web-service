@@ -71,26 +71,23 @@ export class AuditService {
   async getLogs(limit = 50, offset = 0, actionType?: string) {
     if (!this.pool) return { data: [], total: 0 };
 
-    const where = actionType ? `WHERE action_type = $3` : '';
-    const params: (number | string)[] = [limit, offset];
-    if (actionType) params.push(actionType);
-
     const result = await this.pool.query(
       `SELECT * FROM motiv.kpi_audit_log
-       ${where}
+       WHERE ($3::text IS NULL OR action_type = $3::text)
        ORDER BY executed_at DESC
-       LIMIT $1 OFFSET $2`,
-      params,
+       LIMIT $1::integer OFFSET $2::integer`,
+      [limit, offset, actionType ?? null],
     );
 
     const countResult: { rows: { total: string }[] } = await this.pool.query(
-      `SELECT COUNT(*)::text as total FROM motiv.kpi_audit_log ${where}`,
-      actionType ? [actionType] : [],
+      `SELECT COUNT(*)::text as total FROM motiv.kpi_audit_log
+      WHERE ($1::text IS NULL OR action_type = $1::text)`,
+      [actionType ?? null],
     );
 
     return {
-      data: result.rows,
-      total: parseInt(countResult.rows[0].total, 10),
+      data: result.rows as Record<string, unknown>[],
+      total: parseInt((countResult.rows[0] as { total: string }).total, 10),
       limit,
       offset,
     };

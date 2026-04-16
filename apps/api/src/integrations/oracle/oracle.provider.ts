@@ -28,7 +28,6 @@ export const OracleProvider: Provider = {
       const sid = config.get<string>('ORACLE_SERVICE_NAME');
 
       const connectString = `(DESCRIPTION=(ADDRESS=(PROTOCOL=TCP)(HOST=${host})(PORT=${port}))(CONNECT_DATA=(SID=${sid})))`;
-      logger.log(`Connecting to Oracle with SID: ${connectString}`);
 
       const pool = await oracledb.createPool({
         user: config.get('ORACLE_USER'),

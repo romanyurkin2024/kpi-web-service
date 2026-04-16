@@ -1,4 +1,9 @@
-import { Injectable, Inject, BadRequestException } from '@nestjs/common';
+import {
+  Injectable,
+  Inject,
+  BadRequestException,
+  Logger,
+} from '@nestjs/common';
 import { Pool, QueryResult } from 'pg';
 import { EXTERNAL_PG_POOL } from '../integrations/external-pg/external-pg.provider';
 import { ORACLE_POOL } from 'src/integrations/oracle/oracle.provider';
@@ -32,6 +37,8 @@ export class ScriptsService {
     @Inject(ORACLE_POOL) private readonly oraclePool: oracledb.Pool | null,
     private readonly auditService: AuditService,
   ) {}
+
+  private readonly logger = new Logger(ScriptsService.name);
 
   private getPgPool(): Pool {
     if (!this.pgPool) {
@@ -146,6 +153,7 @@ export class ScriptsService {
       d.flow,
       d.name_of_product,
       d.type_func,
+      d.delete_script,
       h.script,
       h.rpt_base_ymd,
       h.editor,
@@ -165,13 +173,37 @@ export class ScriptsService {
   }
 
   async runScript(dto: RunScriptDto) {
-    // Подставляем плейсхолдеры
+    this.logger.log(`=== runScript START ===`);
+    this.logger.log(`connector: ${dto.connector}`);
+    this.logger.log(`targetTable: ${dto.targetTable}`);
+    this.logger.log(`nameOfFunc: ${dto.nameOfFunc}`);
+    this.logger.log(`params: ${JSON.stringify(dto.params)}`);
+    this.logger.log(
+      `sql (first 200 chars): ${dto.script.trim().slice(0, 200)}`,
+    );
+
+    // Таблицы с регистрозависимыми именами (в кавычках)
+    const QUOTED_TABLES = [
+      'REAN_CLI_TABLE',
+      'CLIENTS_OPER_DAYLI',
+      'PAKETY_PREDZALIV',
+    ];
+
     let sql = dto.script;
     for (const [key, value] of Object.entries(dto.params)) {
       sql = sql.replace(new RegExp(`\\{${key}\\}`, 'g'), value);
     }
 
-    const trimmed = sql.trim().toLowerCase();
+    const trimmed = sql
+      .trim()
+      .replace(/\/\*[\s\S]*?\*\//g, '') // убираем /* комментарии */
+      .replace(/--.*$/gm, '') // убираем -- комментарии
+      .trim()
+      .toLowerCase();
+    this.logger.log(`trimmed (first 100): ${trimmed.slice(0, 100)}`);
+    if (!trimmed.startsWith('select') && !trimmed.startsWith('with')) {
+      throw new BadRequestException('Only SELECT/WITH queries are allowed');
+    }
     if (!trimmed.startsWith('select') && !trimmed.startsWith('with')) {
       throw new BadRequestException('Only SELECT/WITH queries are allowed');
     }
@@ -190,12 +222,25 @@ export class ScriptsService {
         });
         rows = (result.rows ?? []) as Record<string, unknown>[];
         columns = result.metaData?.map((m) => m.name.toLowerCase()) ?? [];
-        // Oracle возвращает ключи в верхнем регистре — приводим к нижнему
-        rows = rows.map((row) =>
-          Object.fromEntries(
-            Object.entries(row).map(([k, v]) => [k.toLowerCase(), v]),
-          ),
-        );
+
+        this.logger.log(`columns: ${columns.join(', ')}`);
+
+        if (dto.targetTable === 'REAN_CLI_TABLE') {
+          // Для old таблиц оставляем регистр как есть
+          columns = result.metaData?.map((m) => m.name) ?? [];
+          this.logger.log(`isQuoted rows returned: ${rows.length}`);
+          this.logger.log(`isQuoted columns: ${columns.join(', ')}`);
+        } else {
+          // Для new таблиц приводим к нижнему регистру
+          columns = result.metaData?.map((m) => m.name.toLowerCase()) ?? [];
+          rows = rows.map((row) =>
+            Object.fromEntries(
+              Object.entries(row).map(([k, v]) => [k.toLowerCase(), v]),
+            ),
+          );
+          this.logger.log(`rows returned: ${rows.length}`);
+          this.logger.log(`columns: ${columns.join(', ')}`);
+        }
       } finally {
         await conn.close();
       }
@@ -206,26 +251,58 @@ export class ScriptsService {
         await pool.query(sql);
       rows = result.rows;
       columns = rows.length ? Object.keys(rows[0]) : [];
+      this.logger.log(`rows returned: ${rows.length}`);
+      this.logger.log(`columns: ${columns.join(', ')}`);
+    }
+
+    if (rows.length) {
+      const now = new Date();
+      const rpt_base_ymd =
+        now.getFullYear().toString() +
+        String(now.getMonth() + 1).padStart(2, '0') +
+        String(now.getDate()).padStart(2, '0') +
+        String(now.getHours()).padStart(2, '0') +
+        String(now.getMinutes()).padStart(2, '0') +
+        String(now.getSeconds()).padStart(2, '0');
+      rows = rows.map((row) => ({
+        ...row,
+        name_of_func: dto.nameOfFunc,
+        rpt_base_ymd,
+      }));
+      columns = Object.keys(rows[0]);
     }
 
     if (!rows.length) {
       return {
         rowsAffected: 0,
-        message: 'Скрипт выполнен, данных нет',
+        message: 'Скрипт выполнен, данных нет — заливка и удаление пропущены',
         preview: [],
       };
     }
 
     // Заливаем результат в витрину PostgreSQL
     const pgPool = this.getPgPool();
-    const targetTable = `motiv.${dto.targetTable}`;
+
+    const targetTable = QUOTED_TABLES.includes(dto.targetTable)
+      ? `motiv."${dto.targetTable}"`
+      : `motiv.${dto.targetTable}`;
 
     // Определяем дату для DELETE
-    const dateValue =
-      dto.params['DATE_VALUE1'] ||
-      dto.params['DATE_VALUE3'] ||
-      Object.values(dto.params)[0] ||
-      '';
+    const scriptText = dto.script.toLowerCase();
+    let dateValue = '';
+
+    if (scriptText.includes('{date_value1}') && dto.params['DATE_VALUE1']) {
+      dateValue = dto.params['DATE_VALUE1'];
+    } else if (
+      scriptText.includes('{date_value3}') &&
+      dto.params['DATE_VALUE3']
+    ) {
+      dateValue = dto.params['DATE_VALUE3'];
+    } else {
+      dateValue = dto.params['DATE_VALUE1'] || dto.params['DATE_VALUE3'] || '';
+    }
+
+    this.logger.log(`dateValue for DELETE (from script): ${dateValue}`);
 
     // Проверяем существует ли витрина
     const existsResult = await pgPool.query<{ exists: boolean }>(
@@ -238,6 +315,9 @@ export class ScriptsService {
     );
 
     const tableExists = existsResult.rows[0].exists;
+    this.logger.log(`tableExists: ${tableExists}`);
+    this.logger.log(`dateValue for DELETE: ${dateValue}`);
+
     let deletedRows = 0;
 
     if (!tableExists) {
@@ -255,15 +335,26 @@ export class ScriptsService {
 
       await pgPool.query(`CREATE TABLE ${targetTable} (${columnDefs})`);
     } else {
-      if (dateValue) {
-        const deleteResult = await pgPool.query(
-          `DELETE FROM ${targetTable}
-          WHERE base_ymd <= $1
-            AND SUBSTR(base_ymd, 1, 6) = SUBSTR($1, 1, 6)
-            AND name_of_func = $2`,
-          [dateValue, dto.nameOfFunc],
-        );
+      if (dto.deleteScript) {
+        // old функция — используем кастомный скрипт удаления
+        let deleteSQL = dto.deleteScript;
+        for (const [key, value] of Object.entries(dto.params)) {
+          deleteSQL = deleteSQL.replace(new RegExp(`\\{${key}\\}`, 'g'), value);
+        }
+        const deleteResult = await pgPool.query(deleteSQL);
         deletedRows = deleteResult.rowCount ?? 0;
+        this.logger.log(`old function DELETE rows: ${deletedRows}`);
+      } else if (dateValue) {
+        const deleteSql = `DELETE FROM ${targetTable}
+                            WHERE base_ymd <= $1
+                            AND LEFT(base_ymd, 6) = LEFT($1, 6)
+                            AND name_of_func = $2`;
+        const deleteResult = await pgPool.query(deleteSql, [
+          dateValue,
+          dto.nameOfFunc,
+        ]);
+        deletedRows = deleteResult.rowCount ?? 0;
+        this.logger.log(`new function DELETE rows: ${deletedRows}`);
       }
     }
 
@@ -289,13 +380,19 @@ export class ScriptsService {
         }),
       );
 
-      const colNames = columns.map((c) => `"${c}"`).join(', ');
+      const isQuoted = QUOTED_TABLES.includes(dto.targetTable);
+      const colNames = columns
+        .map((c) => (isQuoted ? `"${c}"` : `"${c}"`))
+        .join(', ');
       await pgPool.query(
         `INSERT INTO ${targetTable} (${colNames}) VALUES ${placeholders}`,
         values,
       );
       inserted += batch.length;
     }
+
+    this.logger.log(`inserted: ${inserted}`);
+    this.logger.log(`=== runScript END ===`);
 
     await this.auditService.log({
       userEmail: dto.userEmail,
@@ -326,8 +423,8 @@ export class ScriptsService {
     const pool = this.getPgPool();
     await pool.query(
       `INSERT INTO motiv.ball_system_scripts_dct 
-      (biznes, gruppa, prod, prod_type, connector, name_of_table, name_of_def_q, name_of_product, type_func, base_ym, rules, flow)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)`,
+      (biznes, gruppa, prod, prod_type, connector, name_of_table, name_of_def_q, name_of_product, type_func, base_ym, rules, flow, delete_script)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)`,
       [
         dto.biznes ?? null,
         dto.gruppa ?? null,
@@ -341,6 +438,7 @@ export class ScriptsService {
         dto.base_ym ?? null,
         dto.rules ?? null,
         dto.flow ?? null,
+        dto.delete_script ?? null,
       ],
     );
 
@@ -415,5 +513,39 @@ export class ScriptsService {
       description: `Удалена функция ${nameOfDefQ} из справочника`,
       completedAt: new Date(),
     });
+  }
+
+  async getDateValues(
+    dateValue: string,
+  ): Promise<{ date_value1: string; date_value3: string }> {
+    const pool = this.getOraclePool();
+    const conn = await pool.getConnection();
+
+    try {
+      const result = await conn.execute(
+        `SELECT
+        d.clnd_ymd as date_value1,
+        to_char(least(sysdate, d.month_end_date), 'yyyymmdd') as date_value3
+       FROM tsclcldarc d
+       WHERE d.clnd_ymd = :dateValue`,
+        { dateValue },
+        { outFormat: oracledb.OUT_FORMAT_OBJECT },
+      );
+
+      const row = ((result.rows ?? []) as Record<string, string>[])[0];
+
+      if (!row) {
+        throw new BadRequestException(
+          `No date values found for date ${dateValue}`,
+        );
+      }
+
+      return {
+        date_value1: row['DATE_VALUE1'],
+        date_value3: row['DATE_VALUE3'],
+      };
+    } finally {
+      await conn.close();
+    }
   }
 }

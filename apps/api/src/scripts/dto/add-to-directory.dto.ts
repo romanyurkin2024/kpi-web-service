@@ -53,4 +53,8 @@ export class AddToDirectoryDto {
   @IsOptional()
   @IsString()
   userEmail?: string;
+
+  @IsOptional()
+  @IsString()
+  delete_script?: string;
 }
